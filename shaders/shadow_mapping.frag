@@ -29,16 +29,8 @@ vec3 sampleOffsetDirections[20] = vec3[]
 float ShadowCalculation(vec3 fragPos)
 {
     vec3 fragToLight = fragPos - lightPos; 
-   // float closestDepth = texture(depthMap, fragToLight).r;
-
-    //обратное преобразование в интервал [0., far_plane]:
-   // closestDepth *= far_plane;  
-
-    //Далее, мы получаем значение глубины для текущего фрагмента относительно источника света. 
-    //Для выбранного подхода это предельно просто: нужно только вычислить длину уже подготовленного вектора fragToLight:
+   
     float currentDepth = length(fragToLight);  
-
-
     float shadow  = 0.0;
     float bias    = 0.05; 
     float samples = 4.0;
@@ -51,15 +43,12 @@ float ShadowCalculation(vec3 fragPos)
         for(float z = -offset; z < offset; z += offset / (samples * 0.5))
         {
             float closestDepth = texture(depthMap, fragToLight + vec3(x, y, z)).r; 
-            closestDepth *= far_plane;   // обратное преобразование из диапазона [0;1]
+            closestDepth *= far_plane;
             if(currentDepth - bias > closestDepth)
                 shadow += 1.0;
         }
     }
 }
-
-  // shadow = currentDepth -  bias > closestDepth ? 1.0 : 0.0; 
-
    shadow /= (samples * samples * samples);
    return shadow;
 }  
@@ -68,30 +57,26 @@ float ShadowCalculation(vec3 fragPos)
 float ShadowCalculationOptim(vec3 fragPos)
 {
     vec3 fragToLight = fragPos - lightPos; 
-   // float closestDepth = texture(depthMap, fragToLight).r;
-
-    //обратное преобразование в интервал [0., far_plane]:
-   // closestDepth *= far_plane;  
-
-    //Далее, мы получаем значение глубины для текущего фрагмента относительно источника света. 
-    //Для выбранного подхода это предельно просто: нужно только вычислить длину уже подготовленного вектора fragToLight:
-    float currentDepth = length(fragToLight);  
+  
+    //Р”Р°Р»РµРµ, РјС‹ РїРѕР»СѓС‡Р°РµРј Р·РЅР°С‡РµРЅРёРµ РіР»СѓР±РёРЅС‹ РґР»СЏ С‚РµРєСѓС‰РµРіРѕ С„СЂР°РіРјРµРЅС‚Р° РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РёСЃС‚РѕС‡РЅРёРєР° СЃРІРµС‚Р°. 
+    //Р”Р»СЏ РІС‹Р±СЂР°РЅРЅРѕРіРѕ РїРѕРґС…РѕРґР° СЌС‚Рѕ РїСЂРµРґРµР»СЊРЅРѕ РїСЂРѕСЃС‚Рѕ: РЅСѓР¶РЅРѕ С‚РѕР»СЊРєРѕ РІС‹С‡РёСЃР»РёС‚СЊ РґР»РёРЅСѓ СѓР¶Рµ РїРѕРґРіРѕС‚РѕРІР»РµРЅРЅРѕРіРѕ РІРµРєС‚РѕСЂР° fragToLight:
+   float currentDepth = length(fragToLight);  
 
 
    float shadow = 0.0;
    float bias   = 0.15;
    int samples  = 20;
    float viewDistance = length(viewPos - fragPos);
-   //Выборка представляет собой круг вокруг вектора выборки
-   // мы реглируем радиус либо константой
+    //Р’С‹Р±РѕСЂРєР° РїСЂРµРґСЃС‚Р°РІР»СЏРµС‚ СЃРѕР±РѕР№ РєСЂСѓРі РІРѕРєСЂСѓРі РІРµРєС‚РѕСЂР° РІС‹Р±РѕСЂРєРё
+   // РјС‹ СЂРµРіР»РёСЂСѓРµРј СЂР°РґРёСѓСЃ Р»РёР±Рѕ РєРѕРЅСЃС‚Р°РЅС‚РѕР№
    //float diskRadius = 0.05;
-   //попробуем менять величину diskRadius в соответствии с удалением наблюдателя от фрагмента.
-   //Так мы сможем увеличить радиус смещения и сделать тени мягче для удаленных фрагментов, резче для близких к наблюдателю фрагментов:
+   //РїРѕРїСЂРѕР±СѓРµРј РјРµРЅСЏС‚СЊ РІРµР»РёС‡РёРЅСѓ diskRadius РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёРё СЃ СѓРґР°Р»РµРЅРёРµРј РЅР°Р±Р»СЋРґР°С‚РµР»СЏ РѕС‚ С„СЂР°РіРјРµРЅС‚Р°.
+   //РўР°Рє РјС‹ СЃРјРѕР¶РµРј СѓРІРµР»РёС‡РёС‚СЊ СЂР°РґРёСѓСЃ СЃРјРµС‰РµРЅРёСЏ Рё СЃРґРµР»Р°С‚СЊ С‚РµРЅРё РјСЏРіС‡Рµ РґР»СЏ СѓРґР°Р»РµРЅРЅС‹С… С„СЂР°РіРјРµРЅС‚РѕРІ, СЂРµР·С‡Рµ РґР»СЏ Р±Р»РёР·РєРёС… Рє РЅР°Р±Р»СЋРґР°С‚РµР»СЋ С„СЂР°РіРјРµРЅС‚РѕРІ:
     float diskRadius = (1.0 + (viewDistance / far_plane)) / 25.0;  
     for(int i = 0; i < samples; ++i)
     {
         float closestDepth = texture(depthMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
-        closestDepth *= far_plane;   // обратное преобразование из диапазона [0;1]
+        closestDepth *= far_plane;   // РѕР±СЂР°С‚РЅРѕРµ РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ РёР· РґРёР°РїР°Р·РѕРЅР° [0;1]
         if(currentDepth - bias > closestDepth)
             shadow += 1.0;
     }
